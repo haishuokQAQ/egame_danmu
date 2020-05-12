@@ -2,8 +2,10 @@ package com.ulyssesk.client;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ulyssesk.constents.GlobalConstant;
 import com.ulyssesk.dao.DanmuDao;
+import com.ulyssesk.kafka.Producer;
 import com.ulyssesk.pojo.Danmu;
 import com.ulyssesk.util.RedisUtil;
 import com.ulyssesk.util.UrlEncodeUtil;
@@ -14,6 +16,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +49,7 @@ public class EgameScreenClient {
      * @Author: sickle
      * @Date: 2018/10/16
      */
-    public void getBullet(Integer anchor_id, DanmuDao danmuDao) {
+    public void getBullet(Integer anchor_id) {
         String vid = anchor_id + "_1539131261";
 
         String data = "param={\"key\":{\"module\":\"pgg_live_barrage_svr\",\"method\":\"get_barrage\",\"param\":{\"anchor_id\":" + anchor_id + ",\"vid\":\"" + vid + "\",\"scenes\":4096,\"last_tm\":1537163282}}}&app_info={\"platform\":4,\"terminal_type\":2,\"egame_id\":\"egame_official\",\"version_code\":\"9.9.9.9\",\"version_name\":\"9.9.9.9\"}&tt=1";
@@ -90,9 +93,10 @@ public class EgameScreenClient {
                                 danmu.setText(object.getString("content"));
                                 danmu.setTime(object.getString("tm"));
                                 String md5 = danmu.getSerialStr();
+                                ObjectMapper mapper = new ObjectMapper();
                                 if (!RedisUtil.exist(md5)) {
                                     RedisUtil.setKeyExpire(md5, 60);
-                                    danmuDao.save(danmu);
+                                    Producer.send(mapper.writeValueAsString(danmu), "danmu");
                                 }
                             }
                         }
@@ -120,11 +124,6 @@ public class EgameScreenClient {
                 LOGGER.error("腾讯爬虫出现错误              {}", e);
             }
         }
-    }
-
-    public static void main(String[] args) {
-        EgameScreenClient client = new EgameScreenClient();
-        client.getBullet(497383565, null);
     }
 }
 
