@@ -1,2 +1,4 @@
 git push -u origin master/target/
 /danmu.log
+/target/
+/.idea/
